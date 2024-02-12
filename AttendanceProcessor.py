@@ -1,24 +1,29 @@
 import pandas as pd
 
 # Get the attendance file from Google sheets into python and do some initial cleanup
-CUNY_corp_fin_doc_id = "1IP9rkHoW75Q4F77luvTTnOxDUg5-ocQonbSSW7igIPk"
-sheet_id = CUNY_corp_fin_doc_id
+doc_df = pd.read_csv("doc_details.csv")
+
+file_index = 6
+sheet_id = doc_df.loc[file_index, "sheet id"]
 doc_name = "https://docs.google.com/spreadsheets/export?id={}&exportFormat=csv".format(sheet_id)
 df = pd.read_csv(doc_name)
-df['Timestamp'] = pd.to_datetime(df['Timestamp'], format="%d/%m/%Y %H:%M:%S")
-df.rename(columns={"Add your exact numeric numeric-digit CUNY ID#.":"name", "Timestamp":"timestamp", "Email address":"email"}, inplace=True)
+df.rename(columns={df.columns[2]:"name", "Timestamp":"timestamp", "Email address":"email"}, inplace=True)
+
+indices_to_drop = df[df["timestamp"]==' '].index
+df.drop(index=indices_to_drop, inplace=True)
+
+df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', dayfirst=True)
+#df['timestamp'] = pd.to_datetime(df['timestamp'], format="%d/%m/%Y %H:%M:%S")
 df["name"] = df["name"].str.upper()
 df["name"] = df["name"].replace(","," ", regex=True)
 df["name"] = df["name"].replace("--"," ", regex=True)
 df["name"] = df["name"].replace("-"," ", regex=True)
 df["name"] = df["name"].replace("  "," ", regex=True)
-df.head()
 
 # Get the student database file from Google sheets
-db_doc_id = "1m3i5FQx5x1svVnHH1yfFXbiYVtABXbcJgNZyUdM4c5o"
+db_doc_id = doc_df.loc[file_index, "db sheet id"]
 db_doc_name = "https://docs.google.com/spreadsheets/export?id={}&exportFormat=csv".format(db_doc_id)
 db = pd.read_csv(db_doc_name, keep_default_na=False)
-db.head()
 
 # Remove duplicates
 db.drop_duplicates(inplace=True)
@@ -67,5 +72,8 @@ for col_index, timestamp in enumerate(unique_dates):
             ar.loc[index, unique_dates_str[col_index]] = "Y"
             ar.loc[index, "Attendance (%)"] = ar.loc[index, "Attendance (%)"] + (100/len(unique_dates_str))
 
-ar.to_csv('attendance_record.csv')
+final_op = ar.round({"Attendance (%)":1})
+final_op.head()
+final_op.to_csv(doc_df.loc[file_index, "course name"]+".csv", index=False)
+
 
